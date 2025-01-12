@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "ServerCore\\ServerCore.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "DummyClient\\DummyClient.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
