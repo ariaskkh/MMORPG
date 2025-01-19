@@ -14,31 +14,40 @@ namespace DummyClient
             IPAddress hostAddress = hostEntry.AddressList[0];
             IPEndPoint endPoint = new IPEndPoint(hostAddress, 7777);
 
-            // 휴대폰 설정 (대리인의 휴대폰)
-            Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            
-            try
+           
+            while (true)
             {
-                // 문지기 입장 문의 - 연결
-                socket.Connect(endPoint);
-                Console.WriteLine($"[Client] Connected to {socket.RemoteEndPoint.ToString()}");
+                // 휴대폰 설정 (대리인의 휴대폰)
+                Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-                // 보낸다
-                byte[] sendBuffer = Encoding.UTF8.GetBytes("Hello World! I'm client");
-                socket.Send(sendBuffer);
+                try
+                {
+                    // 문지기 입장 문의 - 연결
+                    socket.Connect(endPoint);
+                    Console.WriteLine($"[Client] Connected to {socket.RemoteEndPoint.ToString()}");
 
-                // 받는다
-                byte[] recvBuffer = new byte[1024];
-                int recvBytes = socket.Receive(recvBuffer);
-                Console.WriteLine($"[Client] received - {Encoding.UTF8.GetString(recvBuffer, 0, recvBytes)}");
+                    for (int i = 0; i < 5; i++)
+                    {
+                        // 보낸다
+                        byte[] sendBuffer = Encoding.UTF8.GetBytes($"Hello World! I'm client: {i}");
+                        socket.Send(sendBuffer);
+                    }
 
-                // 종료
-                socket.Shutdown(SocketShutdown.Both);
-                socket.Close();
-            }
-            catch (Exception ex) 
-            {
-                Console.WriteLine(ex.ToString());
+                    // 받는다
+                    byte[] recvBuffer = new byte[1024];
+                    int recvBytes = socket.Receive(recvBuffer);
+                    Console.WriteLine($"[Client] received - {Encoding.UTF8.GetString(recvBuffer, 0, recvBytes)}");
+
+                    // 종료
+                    socket.Shutdown(SocketShutdown.Both);
+                    socket.Close();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+
+                Thread.Sleep(100);
             }
         }
     }
