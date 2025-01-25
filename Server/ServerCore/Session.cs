@@ -11,6 +11,7 @@ namespace ServerCore
     {
         Socket _socket;
         int _disconnected = 0;
+        SocketAsyncEventArgs _recvArgs = new SocketAsyncEventArgs();
         SocketAsyncEventArgs _sendArgs = new SocketAsyncEventArgs();
         Queue<byte[]> _sendQueue = new Queue<byte[]>();
         bool _sendProcessing = false;
@@ -20,13 +21,11 @@ namespace ServerCore
         {
             _socket = socket;
 
-            SocketAsyncEventArgs recvArgs = new SocketAsyncEventArgs();
-            recvArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
-            recvArgs.SetBuffer(new byte[1024], 0, 1024);
+            _recvArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
+            _recvArgs.SetBuffer(new byte[1024], 0, 1024);
             
             _sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnSendCompleted);
-            RegisterRecv(recvArgs);
-
+            RegisterRecv();
         }
 
         public void Send(byte[] sendBuff)
@@ -94,12 +93,12 @@ namespace ServerCore
         }
 
         #region 네트워크 통신
-        void RegisterRecv(SocketAsyncEventArgs args)
+        void RegisterRecv()
         {
-            bool isPending = _socket.ReceiveAsync(args);
+            bool isPending = _socket.ReceiveAsync(_recvArgs);
             if (isPending == false)
             {
-                OnRecvCompleted(null, args);
+                OnRecvCompleted(null, _recvArgs);
             }
         }
 
@@ -114,13 +113,12 @@ namespace ServerCore
                     string recvData = Encoding.UTF8.GetString(args.Buffer, args.Offset, args.BytesTransferred);
                     Console.WriteLine($"[From Client] {recvData}");
 
-                    RegisterRecv(args);
+                    RegisterRecv();
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"onRecvCompleted Failed {ex}");
                 }
-                
             }
             else
             {
