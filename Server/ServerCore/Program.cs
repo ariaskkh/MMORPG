@@ -11,23 +11,20 @@ class Program
     {
         try
         {
-            // 받기
-            byte[] recvBuffer = new byte[1024];
-            int recvBytes = clientSocketProxy.Receive(recvBuffer);
-            Console.WriteLine($"Received - {Encoding.UTF8.GetString(recvBuffer, 0, recvBytes)}");
+            Session session = new Session();
+            session.Start(clientSocketProxy);
+            
+            byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server !!!");
+            session.Send(sendBuff);
 
-            // 보내기
-            clientSocketProxy.Send(Encoding.UTF8.GetBytes("Hello MMORPG man !!!"));
+            Thread.Sleep(1000);
 
-            // 쫓아낸다. 보낸다
-            clientSocketProxy.Shutdown(SocketShutdown.Both);
-            clientSocketProxy.Close();
+            session.Disconnect();
         }
         catch (Exception ex)
         {
             Console.WriteLine(ex);
         }
-        
     }
 
     static void Main(string[] args)

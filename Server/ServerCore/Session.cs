@@ -10,8 +10,9 @@ namespace ServerCore
     class Session
     {
         Socket _socket;
+        int _disconnected = 0;
 
-        public void Init(Socket socket)
+        public void Start(Socket socket)
         {
             _socket = socket;
 
@@ -23,6 +24,21 @@ namespace ServerCore
             RegisterRecv(recvArgs);
         }
 
+        public void Send(byte[] sendBuff)
+        {
+            _socket.Send(sendBuff);
+        }
+
+        public void Disconnect()
+        {
+            if (Interlocked.Exchange(ref _disconnected, 1) == 1)
+                return;
+
+            _socket.Shutdown(SocketShutdown.Both);
+            _socket.Close();
+        }
+
+        #region 네트워크 통신
         void RegisterRecv(SocketAsyncEventArgs args)
         {
             bool isPending = _socket.ReceiveAsync(args);
@@ -53,8 +69,9 @@ namespace ServerCore
             }
             else
             {
-                // TODO Disconnect
+                Disconnect();
             }
         }
     }
+    #endregion
 }
