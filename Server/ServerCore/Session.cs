@@ -14,7 +14,7 @@ namespace ServerCore
         SocketAsyncEventArgs _recvArgs = new SocketAsyncEventArgs();
         SocketAsyncEventArgs _sendArgs = new SocketAsyncEventArgs();
         Queue<byte[]> _sendQueue = new Queue<byte[]>();
-        bool _sendProcessing = false;
+        List<ArraySegment<byte>> _pendingList = new();
         object _lockObj = new object();
 
         public void Start(Socket socket)
@@ -33,7 +33,7 @@ namespace ServerCore
             lock (_lockObj)
             {
                 _sendQueue.Enqueue(sendBuff);
-                if (_sendProcessing == false)
+                if (_pendingList.Count == 0)
                 {
                     RegisterSend();
                 }
@@ -51,10 +51,13 @@ namespace ServerCore
 
         void RegisterSend()
         {
-            _sendProcessing = true;
-            byte[] buff = _sendQueue.Dequeue();
-            _sendArgs.SetBuffer(buff, 0, buff.Length);
-
+            while(_sendQueue.Count > 0)
+            {
+                byte[] buff = _sendQueue.Dequeue();
+                _pendingList.Add(new ArraySegment<byte>(buff, 0, buff.Length));
+            }
+            _sendArgs.BufferList = _pendingList;
+            
             var isPending = _socket.SendAsync(_sendArgs);
             if (isPending == false)
             {
@@ -70,15 +73,15 @@ namespace ServerCore
                 {
                     try
                     {
+                        args.BufferList = null;
+                        _pendingList.Clear();
+
+                        Console.WriteLine($"Transferred Bytes: {args.BytesTransferred}");
+
                         if (_sendQueue.Count > 0)
                         {
                             RegisterSend();
                         }
-                        else
-                        {
-                            _sendProcessing = false;
-                        }
-                        
                     }
                     catch (Exception ex)
                     {
