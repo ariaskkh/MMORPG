@@ -11,10 +11,10 @@ namespace ServerCore;
 class Listener
 {
     Socket _listenSocket;
-    Action<Socket> _onAcceptHandler;
-        public void Init(IPEndPoint endPoint, Action<Socket> onAcceptHandler)
+    Func<Session> _sessionFactory;
+        public void Init(IPEndPoint endPoint, Func<Session> sessionFactory)
     {
-        _onAcceptHandler += onAcceptHandler;
+        _sessionFactory += sessionFactory;
         // 문지기 생성
         _listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         // 문지기 교육
@@ -44,8 +44,9 @@ class Listener
     {
         if (args.SocketError == SocketError.Success)
         {
-            _onAcceptHandler.Invoke(args.AcceptSocket);
-
+            Session session = _sessionFactory.Invoke();
+            session.Start(args.AcceptSocket);
+            session.OnConnected(args.AcceptSocket.RemoteEndPoint);
         }
         else
         {

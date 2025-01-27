@@ -7,23 +7,31 @@ class Program
 {
     static Listener _listener = new Listener();
 
-    static void OnAcceptHandler(Socket clientSocketProxy)
+    class GameSession : Session
     {
-        try
+        public override void OnConnected(EndPoint endPoint)
         {
-            Session session = new Session();
-            session.Start(clientSocketProxy);
-            
+            Console.WriteLine($"OnConnected: {endPoint}");
             byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server !!!");
-            session.Send(sendBuff);
-
+            Send(sendBuff);
             Thread.Sleep(1000);
-
-            session.Disconnect();
+            Disconnect();
         }
-        catch (Exception ex)
+
+        public override void OnDisconnected(EndPoint endPoint)
         {
-            Console.WriteLine(ex);
+            Console.WriteLine($"OnDisconnected: {endPoint}");
+        }
+
+        public override void OnRecv(ArraySegment<byte> buffer)
+        {
+            string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
+            Console.WriteLine($"[From Client] {recvData}");
+        }
+
+        public override void OnSend(int numOfBytes)
+        {
+            Console.WriteLine($"Transferred Bytes: {numOfBytes}");
         }
     }
 
@@ -37,7 +45,7 @@ class Program
         
         try
         {
-            _listener.Init(endPoint, OnAcceptHandler);
+            _listener.Init(endPoint, () => new GameSession());
 
             while (true)
             {
