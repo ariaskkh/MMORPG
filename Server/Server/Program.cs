@@ -25,10 +25,13 @@ class Program
             Console.WriteLine($"OnDisconnected: {endPoint}");
         }
 
-        public override void OnRecv(ArraySegment<byte> buffer)
+        // 이동 캐핏 ((3,2) 좌표로 이동하고 싶다!)
+        // 15 3 2
+        public override int OnRecv(ArraySegment<byte> buffer)
         {
             string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
             Console.WriteLine($"[From Client] {recvData}");
+            return buffer.Count; // 임시
         }
 
         public override void OnSend(int numOfBytes)
