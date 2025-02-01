@@ -5,39 +5,40 @@ using System.Text;
 
 namespace DummyClient
 {
-    class Program
+    class GameSession : Session
     {
-        class GameSession : Session
+        public override void OnConnected(EndPoint endPoint)
         {
-            public override void OnConnected(EndPoint endPoint)
-            {
-                Console.WriteLine($"OnConnected: {endPoint}");
+            Console.WriteLine($"OnConnected: {endPoint}");
 
-                for (int i = 0; i < 5; i++)
-                {
-                    // 보낸다
-                    byte[] sendBuffer = Encoding.UTF8.GetBytes($"Hello World! I'm client: {i}");
-                    Send(sendBuffer);
-                }
-            }
-
-            public override void OnDisconnected(EndPoint endPoint)
+            for (int i = 0; i < 5; i++)
             {
-                Console.WriteLine($"OnDisconnected: {endPoint}");
-            }
-
-            public override int OnRecv(ArraySegment<byte> buffer)
-            {
-                string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
-                Console.WriteLine($"[From Server] {recvData}");
-                return buffer.Count; // 임시
-            }
-
-            public override void OnSend(int numOfBytes)
-            {
-                Console.WriteLine($"Transferred Bytes: {numOfBytes}");
+                // 보낸다
+                byte[] sendBuffer = Encoding.UTF8.GetBytes($"Hello World! I'm client: {i}");
+                Send(sendBuffer);
             }
         }
+
+        public override void OnDisconnected(EndPoint endPoint)
+        {
+            Console.WriteLine($"OnDisconnected: {endPoint}");
+        }
+
+        public override int OnRecv(ArraySegment<byte> buffer)
+        {
+            string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
+            Console.WriteLine($"[From Server] {recvData}");
+            return buffer.Count; // 임시
+        }
+
+        public override void OnSend(int numOfBytes)
+        {
+            Console.WriteLine($"Transferred Bytes: {numOfBytes}");
+        }
+    }
+
+    class Program
+    {
 
         static void Main(string[] args)
         {
