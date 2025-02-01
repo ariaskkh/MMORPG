@@ -7,27 +7,25 @@ namespace Server;
 
 class Program
 {
-    class Knight
+    class Packet
     {
-        public int hp;
-        public int attack;
-        public string name;
-        public List<int> skills = new List<int>();
+        public ushort size;
+        public ushort packetId; // packet 종류 구분
     }
 
-    class GameSession : Session
+    class GameSession : PacketSession
     {
         public override void OnConnected(EndPoint endPoint)
         {
             Console.WriteLine($"OnConnected: {endPoint}");
             //byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server !!!");
-            Knight knight = new() { hp = 100, attack = 10 };
+            Packet packet = new() { size = 100, packetId = 10 };
             // [ 100 ][ 10 ]
             //byte[] sendBuff = new byte[4096];
 
             ArraySegment<byte> openSegment = SendBufferHelper.Open(4096);
-            byte[] buffer = BitConverter.GetBytes(knight.hp);
-            byte[] buffer2 = BitConverter.GetBytes(knight.attack);
+            byte[] buffer = BitConverter.GetBytes(packet.size);
+            byte[] buffer2 = BitConverter.GetBytes(packet.packetId);
             Array.Copy(buffer, 0, openSegment.Array, openSegment.Offset, buffer.Length);
             Array.Copy(buffer2, 0, openSegment.Array, openSegment.Offset + buffer.Length, buffer2.Length);
             ArraySegment<byte> sendBuff = SendBufferHelper.Close(buffer.Length + buffer2.Length);
@@ -40,18 +38,17 @@ class Program
             Disconnect();
         }
 
+        // 딱 유효한 부분만 받음
+        public override void OnRecvPacket(ArraySegment<byte> buffer)
+        {
+            ushort size = BitConverter.ToUInt16(buffer.Array, buffer.Offset);
+            ushort id = BitConverter.ToUInt16(buffer.Array, buffer.Offset + 2);
+            Console.WriteLine($"RecvPacketId: {id}, Size: {size}");
+        }
+
         public override void OnDisconnected(EndPoint endPoint)
         {
             Console.WriteLine($"OnDisconnected: {endPoint}");
-        }
-
-        // 이동 캐핏 ((3,2) 좌표로 이동하고 싶다!)
-        // 15 3 2
-        public override int OnRecv(ArraySegment<byte> buffer)
-        {
-            string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
-            Console.WriteLine($"[From Client] {recvData}");
-            return buffer.Count; // 임시
         }
 
         public override void OnSend(int numOfBytes)

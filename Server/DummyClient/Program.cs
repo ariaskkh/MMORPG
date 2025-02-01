@@ -5,6 +5,12 @@ using System.Text;
 
 namespace DummyClient
 {
+    class Packet
+    {
+        public ushort size;
+        public ushort packetId; // packet 종류 구분
+    }
+
     class GameSession : Session
     {
         public override void OnConnected(EndPoint endPoint)
@@ -14,8 +20,16 @@ namespace DummyClient
             for (int i = 0; i < 5; i++)
             {
                 // 보낸다
-                byte[] sendBuffer = Encoding.UTF8.GetBytes($"Hello World! I'm client: {i}");
-                Send(sendBuffer);
+                Packet packet = new() { size = 4, packetId = 7 };
+
+                ArraySegment<byte> openSegment = SendBufferHelper.Open(4096);
+                byte[] buffer = BitConverter.GetBytes(packet.size);
+                byte[] buffer2 = BitConverter.GetBytes(packet.packetId);
+                Array.Copy(buffer, 0, openSegment.Array, openSegment.Offset, buffer.Length);
+                Array.Copy(buffer2, 0, openSegment.Array, openSegment.Offset + buffer.Length, buffer2.Length);
+                ArraySegment<byte> sendBuff = SendBufferHelper.Close(packet.size);
+
+                Send(sendBuff);
             }
         }
 
