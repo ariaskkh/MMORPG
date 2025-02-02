@@ -3,21 +3,58 @@ using System.Net;
 
 namespace Server;
 
-class Packet
+public abstract class Packet
 {
     public ushort size;
     public ushort packetId; // packet 종류 구분
+
+    public abstract ArraySegment<byte> Write();
+    public abstract void Read(ArraySegment<byte> s);
 }
 
 class PlayerInfoReq : Packet
 {
     public long playerId;
-}
 
-class PlayerInfoOk : Packet
-{
-    public int hp;
-    public int attack;
+    public PlayerInfoReq()
+    {
+        packetId = (ushort)PacketID.PlayerInfoReq;
+        playerId = 1001;
+    }
+
+    // ClientSession의 OnRecvPacket 코드 가져옴. 왜?
+    public override void Read(ArraySegment<byte> s)
+    {
+        ushort count = 0;
+
+        //ushort size = BitConverter.ToUInt16(s.Array, s.Offset + count);
+        count += 2;
+        //ushort id = BitConverter.ToUInt16(s.Array, s.Offset + count);
+        count += 2;
+        this.playerId = BitConverter.ToInt64(new ReadOnlySpan<byte>(s.Array, s.Offset + count, s.Count - count));
+        count += 8;
+    }
+
+    public override ArraySegment<byte> Write()
+    {
+        ArraySegment<byte> seg = SendBufferHelper.Open(4096);
+
+        ushort count = 0;
+        bool success = true;
+
+        //success &= BitConverter.TryWriteBytes(new Span<byte>(seg.Array, seg.Offset, seg.Count), packet.size);
+        count += 2;
+        success &= BitConverter.TryWriteBytes(new Span<byte>(seg.Array, seg.Offset + count, seg.Count - count), packetId);
+        count += 2;
+        success &= BitConverter.TryWriteBytes(new Span<byte>(seg.Array, seg.Offset + count, seg.Count - count), playerId);
+        count += 8;
+        success &= BitConverter.TryWriteBytes(new Span<byte>(seg.Array, seg.Offset, seg.Count), count); // size를 마지막에 넣어줘야 함
+
+        if (success == false)
+            return null;
+
+        return SendBufferHelper.Close(count);
+    }
 }
 
 public enum PacketID
@@ -32,7 +69,7 @@ class ClientSession : PacketSession
     {
         Console.WriteLine($"OnConnected: {endPoint}");
         //byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to MMORPG Server !!!");
-        Packet packet = new() { size = 100, packetId = 10 };
+        //Packet packet = new() { size = 100, packetId = 10 };
         // [ 100 ][ 10 ]
         //byte[] sendBuff = new byte[4096];
 
@@ -64,9 +101,9 @@ class ClientSession : PacketSession
         {
             case PacketID.PlayerInfoReq:
                 {
-                    long playerId = BitConverter.ToInt64(buffer.Array, buffer.Offset + count);
-                    count += 8;
-                    Console.WriteLine($"PlayerInfoReq: {playerId}");
+                    PlayerInfoReq p = new PlayerInfoReq();
+                    p.Read(buffer);
+                    Console.WriteLine($"PlayerInfoReq: {p.playerId}");
                 }
                 break;
         }
