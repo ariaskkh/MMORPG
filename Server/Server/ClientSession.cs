@@ -1,5 +1,6 @@
 ﻿using ServerCore;
 using System.Net;
+using System.Text;
 
 namespace Server;
 
@@ -15,6 +16,7 @@ public abstract class Packet
 class PlayerInfoReq : Packet
 {
     public long playerId;
+    public string name;
 
     public PlayerInfoReq()
     {
@@ -23,16 +25,21 @@ class PlayerInfoReq : Packet
     }
 
     // ClientSession의 OnRecvPacket 코드 가져옴. 왜?
-    public override void Read(ArraySegment<byte> s)
+    public override void Read(ArraySegment<byte> seg)
     {
+        ReadOnlySpan<byte> s = new ReadOnlySpan<byte>(seg.Array, seg.Offset, seg.Count);
         ushort count = 0;
 
-        //ushort size = BitConverter.ToUInt16(s.Array, s.Offset + count);
-        count += 2;
-        //ushort id = BitConverter.ToUInt16(s.Array, s.Offset + count);
-        count += 2;
-        this.playerId = BitConverter.ToInt64(new ReadOnlySpan<byte>(s.Array, s.Offset + count, s.Count - count));
-        count += 8;
+        count += sizeof(ushort);
+        count += sizeof(ushort);
+        this.playerId = BitConverter.ToInt64(s.Slice(count, s.Length - count));
+        count += sizeof(long);
+
+        // string
+        ushort nameLen = BitConverter.ToUInt16(s.Slice(count, s.Length - count));
+        count += sizeof(ushort);
+        this.name = Encoding.Unicode.GetString(s.Slice(count, nameLen));
+        count += nameLen;
     }
 
     public override ArraySegment<byte> Write()
@@ -42,13 +49,21 @@ class PlayerInfoReq : Packet
         ushort count = 0;
         bool success = true;
 
-        //success &= BitConverter.TryWriteBytes(new Span<byte>(seg.Array, seg.Offset, seg.Count), packet.size);
-        count += 2;
-        success &= BitConverter.TryWriteBytes(new Span<byte>(seg.Array, seg.Offset + count, seg.Count - count), packetId);
-        count += 2;
-        success &= BitConverter.TryWriteBytes(new Span<byte>(seg.Array, seg.Offset + count, seg.Count - count), playerId);
-        count += 8;
-        success &= BitConverter.TryWriteBytes(new Span<byte>(seg.Array, seg.Offset, seg.Count), count); // size를 마지막에 넣어줘야 함
+        Span<byte> s = new Span<byte>(seg.Array, seg.Offset, seg.Count);
+
+        count += sizeof(ushort);
+        success &= BitConverter.TryWriteBytes(s.Slice(count, s.Length - count), packetId);
+        count += sizeof(ushort);
+        success &= BitConverter.TryWriteBytes(s.Slice(count, s.Length - count), playerId);
+        count += sizeof(long);
+
+        // string
+        ushort nameLen = (ushort)Encoding.Unicode.GetBytes(this.name, 0, this.name.Length, seg.Array, seg.Offset + count + sizeof(ushort)); // 실제 데이터 카피를 먼저 함
+        success &= BitConverter.TryWriteBytes(s.Slice(count, s.Length - count), nameLen);
+        count += sizeof(ushort);
+        count += nameLen;
+
+        success &= BitConverter.TryWriteBytes(s, count); // size를 마지막에 넣어줘야 함
 
         if (success == false)
             return null;
@@ -103,7 +118,7 @@ class ClientSession : PacketSession
                 {
                     PlayerInfoReq p = new PlayerInfoReq();
                     p.Read(buffer);
-                    Console.WriteLine($"PlayerInfoReq: {p.playerId}");
+                    Console.WriteLine($"PlayerInfoReq: {p.playerId}, {p.name}");
                 }
                 break;
         }
