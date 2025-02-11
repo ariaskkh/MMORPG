@@ -1,20 +1,10 @@
 ﻿using ServerCore;
 using System.Net;
 using System.Text;
-using static DummyClient.PlayerInfoReq;
 
 namespace DummyClient;
 
-public abstract class Packet
-{
-    public ushort size;
-    public ushort packetId; // packet 종류 구분
-
-    public abstract ArraySegment<byte> Write();
-    public abstract void Read(ArraySegment<byte> s);
-}
-
-class PlayerInfoReq : Packet
+class PlayerInfoReq
 {
     public long playerId;
     public string name;
@@ -51,20 +41,14 @@ class PlayerInfoReq : Packet
 
     public List<SkillInfo> skills = new List<SkillInfo>();
 
-    public PlayerInfoReq()
-    {
-        packetId = (ushort)PacketID.PlayerInfoReq;
-        playerId = 1001;
-    }
-
     // ClientSession의 OnRecvPacket 코드 가져옴. 왜?
-    public override void Read(ArraySegment<byte> seg)
+    public void Read(ArraySegment<byte> seg)
     {
         ReadOnlySpan<byte> s = new ReadOnlySpan<byte>(seg.Array, seg.Offset, seg.Count);
         ushort count = 0;
         
-        count += sizeof(ushort);
-        count += sizeof(ushort);
+        count += sizeof(ushort); // 패킷 길이
+        count += sizeof(ushort); // 패킷 id
         this.playerId = BitConverter.ToInt64(s.Slice(count, s.Length - count));
         count += sizeof(long);
 
@@ -86,7 +70,7 @@ class PlayerInfoReq : Packet
         }
     }
 
-    public override ArraySegment<byte> Write()
+    public ArraySegment<byte> Write()
     {
         ArraySegment<byte> seg = SendBufferHelper.Open(4096);
 
@@ -96,7 +80,7 @@ class PlayerInfoReq : Packet
         Span<byte> s = new Span<byte>(seg.Array, seg.Offset, seg.Count);
 
         count += sizeof(ushort);
-        success &= BitConverter.TryWriteBytes(s.Slice(count, s.Length - count), packetId);
+        success &= BitConverter.TryWriteBytes(s.Slice(count, s.Length - count), (ushort)PacketID.PlayerInfoReq);
         count += sizeof(ushort);
         success &= BitConverter.TryWriteBytes(s.Slice(count, s.Length - count), playerId);
         count += sizeof(long);
